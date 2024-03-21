@@ -1,0 +1,17 @@
+{
+    "schema_version": "v3",
+    "name_for_human": "旅游路径规划",
+    "name_for_model": "travel_planner",
+    "description_for_human": "实现个性化的旅游路线规划功能，可以根据提供的预算以及目标旅游地点规划出行程安排，并可以规划每个目的地之间的路线，包括驾驶路线、公共交通路线，最后以一个PPT的格式展示出来",
+    "description_for_model": "帮助用户生成个性化的旅游路线规划，可以根据用户提供的预算以及目标旅游地点规划出行程安排，并可以规划每个目的地之间的路线，包括驾驶路线、公共交通路线，最后以一个PPT的格式展示出来",
+    "auth": {
+        "type": "none"
+    },
+    "api":{
+        "type": "openapi",
+        "url": "http://127.0.0.1:8081/.well-known/openapi.yaml"
+    },
+    "logo_url": "http://127.0.0.1:8081/logo.png",
+    "contact_email": "szy2781560790@qq.com",
+    "legal_info_url": "http://www.example.com/legal"
+}
