@@ -1,5 +1,10 @@
-#获得目标旅游地
-destination = request.json.get('destination', "")
+from flask import Flask, request, send_file, make_response
+from flask_cors import CORS
+import json
+import requests
+
+app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "https://yiyan.baidu.com"}})
 
 #返回json格式的结果给文心一言，由其润色后输出给用户
 def make_json_response(data, status_code=200):
@@ -9,6 +14,7 @@ def make_json_response(data, status_code=200):
 
 @app.route("/get_destination", methods=['POST'])
 async def get_destination():
+    #获取目标旅游地
     destination = request.json.get('destination', "")
     prompt = ""
     if response.status_code == 200:
