@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>驾车路线规划</title>
+</head>
+<script charset="utf-8"
+    src="https://map.qq.com/api/gljs?v=1.exp&key=AH3BZ-6FX3J-RFVF5-DJOHC-MMRIF-M7BHD&libraries=service"></script>
+<style>
+    html,
+    body {
+        height: 100%;
+        margin: 0px;
+        padding: 0px;
+    }
+    #mapContainer {
+        width: 100%;
+        height: 100%;
+    }
+    #panel1 {
+        position: absolute;
+        background: #FFF;
+        width:350px;
+        padding: 20px;
+        z-index: 9999;
+        top: 30px;
+        left: 30px;
+    }
+    #container {
+        width: 100%;
+        height: 100%;
+    }
+    #panel2 {
+        position: absolute;
+        background: #FFF;
+        width:350px;
+        padding: 20px;
+        z-index: 9999;
+        top: 30px;
+        left: 30px;
+    }
+
+</style>
+
+<script>
+    var map;
+    var markers; // 将markers变量声明在全局作用域中
+    var geocoder = new TMap.service.Geocoder();
+
+    function initMap() {
+    map = new TMap.Map('mapContainer', {
+        center: new TMap.LatLng(39.990619, 116.321277),
+        zoom: 14,
+    });
+
+    markers = new TMap.MultiMarker({
+        map: map,
+        geometries: [],
+    });
+
+    var startPosition = new TMap.LatLng(39.984039, 116.307630307503); // 路线规划起点
+    var endPosition = new TMap.LatLng(39.977263, 116.337063); // 路线规划终点
+    var marker = new TMap.MultiMarker({
+        // 创造MultiMarker显示起终点标记
+        id: 'marker-layer',
+        map: map,
+        styles: {
+        start: new TMap.MarkerStyle({
+            width: 25,
+            height: 35,
+            anchor: { x: 16, y: 32 },
+            src: 'https://mapapi.qq.com/web/lbs/javascriptGL/demo/img/start.png',
+        }),
+        end: new TMap.MarkerStyle({
+            width: 25,
+            height: 35,
+            anchor: { x: 16, y: 32 },
+            src: 'https://mapapi.qq.com/web/lbs/javascriptGL/demo/img/end.png',
+        }),
+        },
+        geometries: [
+        {
+            id: 'start',
+            styleId: 'start',
+            position: startPosition,
+        },
+        {
+            id: 'end',
+            styleId: 'end',
+            position: endPosition,
+        },
+        ],
+    });
+    var driving = new TMap.service.Driving({
+        // 新建一个驾车路线规划类
+        mp: false, // 是否返回多方案
+        policy: 'PICKUP,NAV_POINT_FIRST', // 规划策略
+    });
+    driving.search({ from: startPosition, to: endPosition }).then((result) => {
+        // 搜索路径
+        result.result.routes[0].steps.forEach((step, index) => {
+        document.getElementById('instruction').innerHTML += `<p>${index + 1}. ${
+            step.instruction
+        }</p>`;
+        // 展示路线引导
+        });
+        displayPolyline(result.result.routes[0].polyline); // 绘制路径折线
+    });
+    }
+
+    function convert() {
+        markers.setGeometries([]);
+        // 将给定的地址转换为坐标位置
+        geocoder
+            .getLocation({ address: document.getElementById('address').value })
+            .then((result) => {
+                markers.updateGeometries([
+                    {
+                        id: 'main',
+                        position: result.result.location, // 将得到的坐标位置用点标记标注在地图上
+                    },
+                ]);
+                map.setCenter(result.result.location);
+                document.getElementById(
+                    'location'
+                ).value = result.result.location.toString();
+                // 显示坐标数值
+            });
+    }
+
+    function displayPolyline(pl) {
+    // 创建 MultiPolyline显示路径折线
+    var polylineLayer = new TMap.MultiPolyline({
+        id: 'polyline-layer',
+        map: map,
+        styles: {
+        style_blue: new TMap.PolylineStyle({
+            color: '#3777FF',
+            width: 8,
+            borderWidth: 5,
+            borderColor: '#FFF',
+            lineCap: 'round',
+        }),
+        },
+        geometries: [
+        {
+            id: 'pl_1',
+            styleId: 'style_blue',
+            paths: pl,
+        },
+        ],
+    });
+    }
+</script>
+
+<body onload="initMap()">
+    <div id="mapContainer"></div>
+    <div id="panel1"><h4>驾车路线规划</h4><div id="instruction"></div></div>
+    <div id="container"></div>
+    <div id="panel2">
+        <p><label>起点</label><input id='address' type="text" value='（起点）'><input id="convert" type="button"
+                class="btn" value="转换为坐标" onclick="convert()" /></p>
+        <p><label>坐标</label><input id='location' type='text' disabled value='' /></p>
+        <!-- <p><label>终点</label><input id='address' type="text" value='（终点）'><input id="convert" type="button"
+                class="btn" value="转换为坐标" onclick="convert()" /></p>
+        <p><label>坐标</label><input id='location' type='text' disabled value='' /></p> -->
+    </div>
+</body>
+
+</html>
