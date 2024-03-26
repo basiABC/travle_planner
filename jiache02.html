@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.3.2/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>驾车路线规划</title>
+</head>
+<script charset="utf-8" src="https://map.qq.com/api/gljs?v=1.exp&key=AH3BZ-6FX3J-RFVF5-DJOHC-MMRIF-M7BHD&libraries=service"></script>
+<style>
+    html,
+    body {
+        height: 100%;
+        margin: 0px;
+        padding: 0px;
+    }
+
+    #mapContainer {
+        width: 100%;
+        height: 100%;
+    }
+    #panel {
+        position: absolute;
+        background: #FFF;
+        width:350px;
+        padding: 20px;
+        z-index: 9999;
+        top: 30px;
+        left: 30px;
+    }
+</style>
+
+<script>
+var map;
+function planRoute() {
+    var startAddress = document.getElementById("startAddress").value;
+    var endAddress = document.getElementById("endAddress").value;
+    var geocoder = new TMap.service.Geocoder();
+
+    Promise.all([
+        geocoder.getLocation({ address: startAddress }),
+        geocoder.getLocation({ address: endAddress })
+    ]).then(([startResult, endResult]) => {
+        var startPosition = startResult.result.location;
+        var endPosition = endResult.result.location;
+
+        // 更新地图上的起终点标记
+        var marker = new TMap.MultiMarker({
+            id: 'marker-layer',
+            map: map,
+            styles: {
+                start: new TMap.MarkerStyle({
+                    width: 25,
+                    height: 35,
+                    anchor: { x: 16, y: 32 },
+                    src: 'https://mapapi.qq.com/web/lbs/javascriptGL/demo/img/start.png',
+                }),
+                end: new TMap.MarkerStyle({
+                    width: 25,
+                    height: 35,
+                    anchor: { x: 16, y: 32 },
+                    src: 'https://mapapi.qq.com/web/lbs/javascriptGL/demo/img/end.png',
+                }),
+            },
+            geometries: [
+                {
+                    id: 'start',
+                    styleId: 'start',
+                    position: startPosition,
+                },
+                {
+                    id: 'end',
+                    styleId: 'end',
+                    position: endPosition,
+                },
+            ],
+        });
+        
+        // 计算起点和终点的中心坐标
+        var centerLat = (startPosition.lat + endPosition.lat) / 2;
+        var centerLng = (startPosition.lng + endPosition.lng) / 2;
+        map.setCenter(new TMap.LatLng(centerLat, centerLng));
+
+        // 进行路线规划
+        var driving = new TMap.service.Driving({
+            mp: false,
+            policy: 'PICKUP,NAV_POINT_FIRST',
+        });
+        driving.search({ from: startPosition, to: endPosition }).then((result) => {
+            document.getElementById('instruction').innerHTML = ""; // 清空之前的路线指令
+            result.result.routes[0].steps.forEach((step, index) => {
+                document.getElementById('instruction').innerHTML += `<p>${index + 1}. ${step.instruction}</p>`;
+            });
+            displayPolyline(result.result.routes[0].polyline); // 绘制路径折线
+        });
+    }).catch(error => {
+        console.error("地址解析失败:", error);
+    });
+}
+
+
+function initMap() {
+  map = new TMap.Map('mapContainer', {
+    center: new TMap.LatLng(39.990619, 116.321277),
+    zoom: 14,
+  });
+}
+
+function displayPolyline(pl) {
+  // 创建 MultiPolyline显示路径折线
+  var polylineLayer = new TMap.MultiPolyline({
+    id: 'polyline-layer',
+    map: map,
+    styles: {
+      style_blue: new TMap.PolylineStyle({
+        color: '#3777FF',
+        width: 8,
+        borderWidth: 5,
+        borderColor: '#FFF',
+        lineCap: 'round',
+      }),
+    },
+    geometries: [
+      {
+        id: 'pl_1',
+        styleId: 'style_blue',
+        paths: pl,
+      },
+    ],
+  });
+}
+
+function captureAndSaveScreen() {
+    html2canvas(document.body).then(canvas => {
+        canvas.toBlob(function(blob) {
+            saveAs(blob, "screenshot.png");
+        });
+    });
+}
+
+</script>
+
+<body onload="initMap()">
+    <div id="mapContainer"></div>
+    <div id="panel">
+        <h4>驾车路线规划</h4>
+        <input id="startAddress" type="text" placeholder="起点地址" value="北京市海淀区彩和坊路海淀西大街74号" />
+        <!-- <button onclick="captureAndSaveScreen()">截屏并保存</button> -->
+        <input id="endAddress" type="text" placeholder="终点地址" value="北京市朝阳区朝阳公园南路1号" />
+        <button onclick="planRoute()">规划路线</button>
+        <div id="instruction"></div>
+        
+    </div>
+
+</body>
+
+</html>
