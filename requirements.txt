@@ -1,2 +1,12 @@
 flask[async]
 flask_cors
+os
+sys
+time
+subprocess
+json
+scrapy
+json
+codecs
+BeautifulSoup
+pypinyin
