@@ -5,11 +5,16 @@ import os
 import sys
 import subprocess
 import time
-from flask import Flask, request, make_response, send_from_directory
+from flask import Flask, request, make_response, send_from_directory,g
+import requests
 
 app = Flask(__name__)
 
 CORS(app, resources={r"/*": {"origins": "https://yiyan.baidu.com"}})
+
+history = []
+destination=''
+app.config['param']=0
 
 #返回json格式的结果给文心一言，由其润色后输出给用户
 def make_json_response(data, status_code=200):
@@ -17,9 +22,77 @@ def make_json_response(data, status_code=200):
     response.headers["Content-Type"] = "application/json"
     return response
 
+@app.context_processor
+def get_question():
+    global destination
+    answer=g.get('answer', '')
+    question ={
+        1:f"根据用户输入'{answer}'给出相应回答，并询问是几个人出游",
+        2:f"根据用户输入‘{answer}’给出相应回答，并询问计划呆多久",
+        3:f"根据用户输入‘{answer}’给出相应回答，并询问用户想要什么风格的旅程",
+        4:f"根据用户输入‘{answer}’给出相应回答，并询问{destination}有没有特别想去的地方",
+        5:f"根据用户输入‘{answer}’给出相应回答，并询问用户的游玩预算",
+        6:f"根据用户输入‘{answer}’给出相应回答，并询问用户打算在住宿上花费的预算",
+        7:f"根据用户输入‘{answer}’给出相应回答，并告诉用户旅游计划马上生成"
+    }
+    return dict(prompt= question[app.config['param']])
+
+@app.route("/get_info", methods=['POST'])
+async def get_info():
+    global destination
+    global history
+    g.answer = request.json.get('info', "")
+    print(g.answer)
+    history.append(g.answer)
+    app.config['param'] = len(history)
+    if(destination!=""):
+        destination = request.json.get('destination', "")
+    print(destination)
+    print(history)
+    return make_json_response( {"prompt":get_question()['prompt']})
+
+def info_processing():
+    url = "https://aip.baidubce.com/rpc/2.0/nlp/v1/txt_monet?access_token=" + "24.776588ead166875f54e62a0b839b4ddc.2592000.1714468642.282335-57393223"
+    info = "".join(history)
+    dict_info={
+    "content_list":[
+        {
+            "content":f'{info}',
+            "query_list":[
+                {
+                    "query":"出游人数"
+                },
+                {
+                    "query":"行程持续时间"
+                },
+                {
+                    "query": "旅游风格"
+                },
+                {
+                    "query": "特别想游玩的景点"
+                },
+                {
+                    "query": "游玩预算"
+                },
+                {
+                    "query": "住宿预算"
+                }
+            ]
+        }]
+    }
+    json_info = json.dumps(dict_info, ensure_ascii = False, indent = 4).encode('uft-8')
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    }
+    response = requests.request("POST", url, headers = headers, data = json_info)
+
+    print(response.text)
+
+
 @app.route("/get_destination", methods=['POST'])
 async def get_destination():
-    destination = request.json.get('destination', "")
+    global destination
     if destination != "":
         #加入获得目的地后的操作
         current_directory = os.path.dirname(os.path.abspath(__file__))
