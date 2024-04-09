@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>驾车路线规划</title>
+</head>
+
+<body onload="initMap()">
+    <div id="mapContainer"></div>
+
+    <div id="panel">
+        <h4>驾车路线规划</h4>
+        <input id="startAddress" type="text" placeholder="起点地址" value="杭州电子科技大学" />
+        <button id="addWaypoint">添加途径点</button>
+        <div id="waypointsContainer">
+            <input class="waypoint" type="text" placeholder="途径点地址" />
+        </div>
+        <input id="endAddress" type="text" placeholder="终点地址" value="杭州东站" />
+        <button onclick="planRoute()">规划路线</button>
+        <div id="instruction"></div>
+    </div>
+    
+</body>
+
+<script charset="utf-8" src="https://map.qq.com/api/gljs?v=1.exp&key=AH3BZ-6FX3J-RFVF5-DJOHC-MMRIF-M7BHD&libraries=service"></script>
+<style>
+    html,
+    body {
+        height: 100%;
+        margin: 0px;
+        padding: 0px;
+    }
+    #mapContainer {
+        width: 100%;
+        height: 100%;
+    }
+    #panel {
+        position: absolute;
+        background: #FFF;
+        width:350px;
+        padding: 20px;
+        z-index: 9999;
+        top: 30px;
+        left: 30px;
+    }
+
+</style>
+
+<script>
+var map;
+
+function planRoute() {
+    var startAddress = document.getElementById("startAddress").value;
+    var endAddress = document.getElementById("endAddress").value;
+    var waypoints = Array.from(document.getElementsByClassName("waypoint")).map(input => input.value).filter(value => value.trim() !== "");
+    // console.log(waypoints);
+    var geocoder = new TMap.service.Geocoder();
+
+    // 构造所有地址解析的Promise数组
+    var addressPromises = [
+        geocoder.getLocation({ address: startAddress }),
+        ...waypoints.map(waypoint => geocoder.getLocation({ address: waypoint })),
+        geocoder.getLocation({ address: endAddress })
+    ];
+
+    // console.log(addressPromises);
+
+    Promise.all(addressPromises).then(locations => {
+        var positions = locations.map(result => result.result.location);
+        
+        var startPosition = positions[0];
+        var endPosition = positions[positions.length - 1];
+        var waypointsPositions = positions.slice(1, -1);
+
+        // 更新地图上的起终点标记
+        var marker = new TMap.MultiMarker({
+            id: 'marker-layer',
+            map: map,
+            styles: {
+                start: new TMap.MarkerStyle({
+                    width: 25,
+                    height: 35,
+                    anchor: { x: 16, y: 32 },
+                    src: 'https://mapapi.qq.com/web/lbs/javascriptGL/demo/img/start.png',
+                }),
+                end: new TMap.MarkerStyle({
+                    width: 25,
+                    height: 35,
+                    anchor: { x: 16, y: 32 },
+                    src: 'https://mapapi.qq.com/web/lbs/javascriptGL/demo/img/end.png',
+                }),
+            },
+            geometries: [
+                {
+                    id: 'start',
+                    styleId: 'start',
+                    position: startPosition,
+                },
+                {
+                    id: 'end',
+                    styleId: 'end',
+                    position: endPosition,
+                },
+            ],
+        });
+
+        // // 计算中心坐标，可能需要根据所有坐标动态计算中心点
+        // var centerLat = (startPosition.lat + endPosition.lat) / 2;
+        // var centerLng = (startPosition.lng + endPosition.lng) / 2;
+        // map.setCenter(new TMap.LatLng(centerLat, centerLng));
+        
+        // 使用所有点（起点、途径点、终点）来计算中心坐标
+        var totalLat = 0;
+        var totalLng = 0;
+        positions.forEach(position => {
+            totalLat += position.lat;
+            totalLng += position.lng;
+        });
+        var centerLat = totalLat / positions.length; // 所有点纬度的平均值
+        var centerLng = totalLng / positions.length; // 所有点经度的平均值
+        map.setCenter(new TMap.LatLng(centerLat, centerLng));
+
+        // 进行路线规划，包括途径点
+        var driving = new TMap.service.Driving({
+            mp: false,
+            policy: 'PICKUP,NAV_POINT_FIRST',
+        });
+        driving.search({
+            from: startPosition,
+            to: endPosition,
+            waypoints: waypointsPositions // 途径点坐标
+        }).then(result => {
+            document.getElementById('instruction').innerHTML = ""; // 清空之前的路线指令
+            result.result.routes[0].steps.forEach((step, index) => {
+                document.getElementById('instruction').innerHTML += `<p>${index + 1}. ${step.instruction}</p>`;
+            });
+            displayPolyline(result.result.routes[0].polyline); // 绘制路径折线
+        });
+    }).catch(error => {
+        console.error("地址解析失败:", error);
+    });
+}
+
+
+function initMap() {
+  map = new TMap.Map('mapContainer', {
+    center: new TMap.LatLng(39.990619, 116.321277),
+    zoom: 14,
+  });
+}
+
+function displayPolyline(pl) {
+  // 创建 MultiPolyline显示路径折线
+  var polylineLayer = new TMap.MultiPolyline({
+    id: 'polyline-layer',
+    map: map,
+    styles: {
+      style_blue: new TMap.PolylineStyle({
+        color: '#3777FF',
+        width: 8,
+        borderWidth: 5,
+        borderColor: '#FFF',
+        lineCap: 'round',
+      }),
+    },
+    geometries: [
+      {
+        id: 'pl_1',
+        styleId: 'style_blue',
+        paths: pl,
+      },
+    ],
+  });
+}
+
+
+document.getElementById('addWaypoint').addEventListener('click', function() {
+    var waypointsContainer = document.getElementById('waypointsContainer');
+    var newInput = document.createElement('input');
+    newInput.type = 'text';
+    newInput.className = 'waypoint';
+    newInput.placeholder = '途径点地址';
+    waypointsContainer.appendChild(newInput);
+});
+
+
+</script>
+
+</html>
+
