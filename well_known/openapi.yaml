@@ -1,51 +1,69 @@
 openapi: 3.0.1
 info:
-    title: 旅游路径规划
-    description: 实现个性化的旅游路线规划功能，可以根据提供的预算以及目标旅游地点规划出行程安排，并可以规划每个目的地之间的路线，包括驾驶路线、公共交通路线，最后以一个PPT的格式展示出来个性化的英文单词本，可以增加、删除和浏览单词本中的单词，背单词时从已有单词本中随机抽取单词生成句子或者段落。
-    version: "v3"
+  title: 旅游路径规划
+  description: 实现个性化的旅游路线规划功能，可以根据提供的预算以及目标旅游地点规划出行程安排，并可以根据用户输入的开始地点和终止地点进行导航。
+  version: "v1"
 servers:
-    - url: http://127.0.0.1:8081
+  - url: http://127.0.0.1:8081
 paths:
-     /get_destiantion:
-        post:
-            operationId: getdestination
-            summary: 获得用户输入的目标旅游地
-            responses:
-                "200":
-                    description: 成功获得目标旅游地信息
-                    content:
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/getdestination"
-    /get_navigation_needs:
-        post:
-            operationId: getnavigationneeds
-            summary: 获得用户输入的导航区间
-            responses:
-                "200":
-                    description: 成功获得导航区间信息
-                    content:
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/getnavigationneeds"
-
+  /get_info:
+    post:
+      summary: 获取用户有关旅游的全部输入
+      operationId: getInfo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InfoRequest"
+      responses:
+        "200":
+          description: 成功获得用户有关旅游行程的想法
+  /get_navigation_needs:
+    post:
+      summary: 获得用户输入的导航区间
+      operationId: getNavigationNeeds
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NavigationRequest"
+      responses:
+        "200":
+          description: 成功获得导航区间信息
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NavigationResponse"
 components:
-    schemas:
-        getdestination:
-            type: object
-            required: [destination]
-            properties:
-                destination:
-                    type: string
-                    description: 目标旅游地
-        getnavigationneeds:
-            type: object
-            required: [start_location,end_location]
-            properties:
-                start_location:
-                    type: string
-                    description: 起始地点
-                end_location:
-                    type: string
-                    description: 终止地点
-        
+  schemas:
+    InfoRequest:
+      type: object
+      properties:
+        answer:
+          type: string
+          description: 用户全部输入
+        destination:
+          type: string
+          description: 用户输入的目的地
+      required:
+        - answer
+    NavigationRequest:
+      type: object
+      properties:
+        start_location:
+          type: string
+          description: 起始地点
+        end_location:
+          type: string
+          description: 终止地点
+      required:
+        - start_location
+        - end_location
+    NavigationResponse:
+      type: object
+      properties:
+        navigation_info:
+          type: string
+          description: 导航区间信息
